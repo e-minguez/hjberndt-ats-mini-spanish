@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guía del firmware Mini-Radio · RTTY · CW · SSTV · WeFax para ATS-Mini (ESP32-S3 / SI4735)</title>
+<meta name="description" content="Guía de usuario del firmware personalizado para el receptor de bolsillo ATS-Mini (ESP32-S3 + SI4735/SI4732): pasos claros para escuchar FM/AM/SSB y decodificar RTTY, CW/Morse, SSTV y WeFax.">
+<meta name="keywords" content="RTTY, Morse, CW, decodificador, doble núcleo, SI4735, SI4732, ESP32-S3, ATS-Mini, SSTV, WeFax, DWD, FT8, onda corta, EiBi, firmware, guía">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="site-header__inner">
+    <img class="site-header__logo" src="img/pocket_mini.png" alt="Logotipo del Mini-Radio de bolsillo">
+    <div class="site-header__text">
+      <p class="site-header__eyebrow">Guía de usuario · receptor SSB de bolsillo</p>
+      <h1>Firmware Mini-Radio <small>V4</small></h1>
+      <p>Guía paso a paso del firmware personalizado para el ATS-Mini (ESP32-S3 + SI4735/SI4732):
+        escucha de <strong>FM · AM · SSB</strong> y decodificación de <strong>RTTY · CW · SSTV · WeFax</strong>
+        directamente desde la antena telescópica.</p>
+      <a class="site-header__cta" href="#instalar">↓ Instalar el firmware</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ================= TABLA DE CONTENIDOS ================= -->
+  <nav class="toc" id="toc" data-open="true" aria-label="Índice de contenidos">
+    <button class="toc-toggle" type="button" aria-expanded="true" aria-controls="toc-list">Contenidos</button>
+    <div class="toc__list" id="toc-list">
+      <h2>Contenidos</h2>
+      <ol>
+        <li><a href="#intro">Antes de empezar</a></li>
+        <li><a href="#instalar">Instalar el firmware</a></li>
+        <li><a href="#primeros-pasos">Primeros pasos</a></li>
+        <li><a href="#escuchar-fm">Escuchar FM</a></li>
+        <li><a href="#escuchar-am">Escuchar AM / onda corta</a></li>
+        <li><a href="#escuchar-ssb">Escuchar SSB</a></li>
+        <li><a href="#sintonizar">Sintonizar (Fast Tune, NumPad…)</a></li>
+        <li><a href="#rtty">Decodificar RTTY y CW</a></li>
+        <li><a href="#sstv">Recibir imágenes SSTV</a></li>
+        <li><a href="#wefax">Recibir mapas WeFax</a></li>
+        <li><a href="#ibp">Identificar balizas IBP</a></li>
+        <li><a href="#observar">Observar la banda</a></li>
+        <li><a href="#archivos">Gestionar archivos y datos</a></li>
+        <li><a href="#pantalla">Personalizar la pantalla</a></li>
+        <li><a href="#menu">Referencia: el menú</a></li>
+        <li><a href="#backlight">Referencia: códigos Backlight</a></li>
+        <li><a href="#problemas">Solución de problemas</a></li>
+        <li><a href="#historial">Historial de cambios</a></li>
+      </ol>
+    </div>
+  </nav>
+
+  <!-- ================= CONTENIDO ================= -->
+  <main class="content">
+
+    <!-- ---------- INTRO ---------- -->
+    <section id="intro">
+      <h2 class="section-title">Antes de empezar</h2>
+      <p class="section-sub">Qué necesitas y qué puede hacer el radio. Esta guía cubre el firmware personalizado; para un equipo ajeno, revisa también <a href="#problemas">Solución de problemas</a>.</p>
+
+      <figure class="figure-float-right">
+        <a href="img/miniV3L.png"><img src="img/miniV3L.png" alt="Mini-Radio ATS-Mini mostrando radiotexto"></a>
+        <figcaption>El Mini-Radio con la pantalla de información ampliada.</figcaption>
+      </figure>
+
+      <p>El <a href="https://xtronic.org/circuit/rf/radio-receiver/esp32-s3-si4732-pocket-multiband-receiver/">ATS-Mini</a> es un receptor de bolsillo con el chip SI4732 (o SI4735), un ESP32-S3 de doble núcleo y una pantalla a color de 320×170. Este firmware aprovecha el segundo núcleo —ocioso en el firmware original— para decodificar señales sin PC, teléfono ni Internet.</p>
+
+      <h3>Los tres ámbitos de uso</h3>
+      <ul>
+        <li><strong>FM</strong> — radio local con estéreo, RDS, hora y RadioText.</li>
+        <li><strong>AM</strong> — onda larga, media y corta (150–30000 kHz) para radiodifusión.</li>
+        <li><strong>SSB</strong> — banda lateral única (USB/LSB): voz de radioaficionados y modos digitales (RTTY, CW, SSTV, WeFax, FT8…).</li>
+      </ul>
+
+      <h3>Requisitos de hardware por tarea</h3>
+      <p>La escucha de FM/AM/SSB funciona <strong>sin modificar nada</strong>. Para decodificar hace falta hardware adicional según la tarea:</p>
+      <div class="req">Para <strong>RTTY y CW</strong>: un puente de cable del pin 8 del CI amplificador a <strong>IO11</strong> del ESP32-S3. <a href="#hardware-io11">Ver montaje</a>.</div>
+      <div class="req req--mic">Para <strong>SSTV y WeFax</strong>: un micrófono I2S <strong>INMP441</strong> (≈1,50 €) cableado a GPIO12/13/14. <a href="#hardware-i2s">Ver montaje</a>.</div>
+
+      <div class="warn">
+        <span class="label">Aviso</span>
+        Este firmware sigue en desarrollo e intenta mostrar el máximo de información a la vez. Su uso es <strong>bajo tu propio riesgo</strong>. No es un firmware oficial; a los radioaficionados se les recomienda el firmware <em>ats-mini</em>. Versiones de referencia de esta guía: <strong>V1 y V3</strong> (la V4 no se ha probado aquí).
+      </div>
+    </section>
+
+    <!-- ---------- INSTALAR ---------- -->
+    <section id="instalar">
+      <h2 class="section-title">Instalar o actualizar el firmware</h2>
+      <p class="section-sub">El firmware se distribuye como binario <code>.bin</code> dentro de un ZIP y se carga («flashea») por cable USB. <span class="small">Los enlaces de descarga no son permanentes; la dirección de esta página sí.</span></p>
+
+      <div class="note">
+        <span class="label">Antes de nada: copia de seguridad</span>
+        Conviene guardar el firmware de fábrica por si tu equipo tiene problemas de pantalla. En Windows, con el <em>Flash Download Tool V3.9.8</em> del fabricante (modo ESP32-S3 / <em>Developer</em>): elige el puerto y usa <em>Read Flash address 0x0 size 0x200000</em> para guardar 2 MB como <code>.bin</code>. Ese archivo puede volver a subirse para restaurar el estado original.
+      </div>
+
+      <div class="howto">
+        <h3>Flashear desde el navegador (PC)</h3>
+        <div class="howto__field">
+          <span class="howto__label">Qué hace</span>
+          <p>Carga el firmware en el radio usando Chrome/Edge, sin instalar nada.</p>
+        </div>
+        <div class="howto__field">
+          <span class="howto__label">Cuándo usarlo</span>
+          <p>Instalación normal desde un ordenador.</p>
+        </div>
+        <div class="howto__field">
+          <span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Descarga el firmware: <a href="http://www.hjberndt.de/dvb/targetI2S.zip">actual (≈397k)</a> · o el <a href="http://www.hjberndt.de/dvb/targetSEEK.zip">anterior (reserva)</a> · o el <a href="http://www.hjberndt.de/dvb/pocketSI4735DualCoreDecoderOld.html">legacy de mayo 2025</a>.</li>
+            <li>Descomprime el ZIP en cualquier carpeta.</li>
+            <li>Abre el <a href="https://adafruit.github.io/Adafruit_WebSerial_ESPTool/">WebSerial ESP-Tool</a> en el navegador.</li>
+            <li>Pulsa <span class="ui">Connect</span> y conecta el radio encendido por cable USB; elige su puerto serie.</li>
+            <li>En <span class="ui">Choose a file</span>, con <strong>Offset 0x0</strong>, selecciona el binario <code>*.bin</code>.</li>
+            <li>Pulsa <span class="ui">Program</span> para iniciar el flasheo.</li>
+            <li>Apaga y vuelve a encender el radio una vez.</li>
+          </ol>
+        </div>
+        <div class="howto__field">
+          <span class="howto__label">Notas</span>
+          <p>Si el firmware se comporta raro, suele deberse a la memoria de un firmware previo: antes de transferir, borra todo con <span class="ui">Erase</span> en el ESP-Tool. Tras conectar, la herramienta detecta el chip ESP32-S3 y muestra mensajes como <code>Chip is ESP32-S3 … Stub running…</code>; el radio se apaga durante el proceso.</p>
+        </div>
+      </div>
+
+      <div class="howto">
+        <h3>Flashear desde Android (móvil)</h3>
+        <div class="howto__field">
+          <span class="howto__label">Qué hace</span>
+          <p>Instala el firmware sin PC, solo con un teléfono Android y cable OTG.</p>
+        </div>
+        <div class="howto__field">
+          <span class="howto__label">Cuándo usarlo</span>
+          <p>Cuando no tienes a mano un ordenador con Linux/macOS/Windows.</p>
+        </div>
+        <div class="howto__field">
+          <span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Instala las apps <a href="https://play.google.com/store/apps/details?id=de.kai_morich.serial_usb_terminal">Serial USB Terminal</a> y <a href="https://play.google.com/store/apps/details?id=com.esp_flash.esp_flash_app">ESP32_Flash</a>.</li>
+            <li>Descomprime el ZIP descargado en la carpeta <em>Serial</em> (la que crea Serial USB Terminal en Downloads).</li>
+            <li>En Serial USB Terminal, en <span class="ui">Settings</span>, elige control de flujo DTR/DSR o RTS/CTS (desconectado).</li>
+            <li>Conecta y, con los dos botones, conmuta las líneas hasta que el radio quede en <strong>modo descarga</strong> (o abre el radio y pulsa el botón).</li>
+            <li>Cierra la conexión y abre <em>ESP32_Flash</em>.</li>
+            <li>Elige ESP32-S3, Bootloader Auto en <strong>OFF</strong>, selecciona <code>targetxxxx.bin</code>, dirección <strong>0x0000</strong> y pulsa <span class="ui">Flash</span>.</li>
+          </ol>
+        </div>
+        <div class="howto__field">
+          <span class="howto__label">Notas</span>
+          <p>Como el ESP32-S3 no tiene UART de hardware propio, si la conexión falla puede ayudar conmutar las líneas DTR y RTS desde un terminal serie para forzar un reset, sin abrir el equipo.</p>
+        </div>
+      </div>
+      <div class="figrow">
+        <figure><img src="img/miniV3serial.png" alt="Serial USB Terminal conmutando las líneas DTR/RTS"><figcaption>Conmutando líneas hasta el modo descarga.</figcaption></figure>
+        <figure><img src="img/miniV3flash.png" alt="App ESP32_Flash lista para flashear"><figcaption>ESP32_Flash con el binario seleccionado.</figcaption></figure>
+      </div>
+    </section>
+
+    <!-- ---------- PRIMEROS PASOS ---------- -->
+    <section id="primeros-pasos">
+      <h2 class="section-title">Primeros pasos</h2>
+      <p class="section-sub">Qué hacer la primera vez, con el radio recién flasheado y sin emisoras guardadas.</p>
+      <figure class="figure-float-right">
+        <img src="img/miniV3.png" alt="Pantalla en modo Info mostrando una emisora de FM">
+        <figcaption>Modo Info: emisora de FM, hora RDS, señal y trazador.</figcaption>
+      </figure>
+
+      <div class="howto">
+        <h3>Preparar el radio y guardar tus emisoras</h3>
+        <div class="howto__field">
+          <span class="howto__label">Qué hace</span>
+          <p>Encuentra las emisoras de FM fuertes y las guarda, para tener una fuente fiable de hora/fecha por RDS en cada sesión.</p>
+        </div>
+        <div class="howto__field">
+          <span class="howto__label">Cuándo usarlo</span>
+          <p>Una sola vez, justo después de instalar el firmware.</p>
+        </div>
+        <div class="howto__field">
+          <span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Enciende. El radio arranca en FM, en modo <span class="ui">TUNE</span> Freq: ya puedes girar por la banda.</li>
+            <li>Abre el menú (clic) y elige <span class="ui">ETM</span>. El barrido rápido guarda temporalmente lo audible. <span class="small">(Para captar solo emisoras muy fuertes, acorta la antena.)</span></li>
+            <li>Tras el barrido, el mando recorre las emisoras halladas (modo TUNE-ETM); la intensidad de la marca amarilla distingue fuertes de débiles.</li>
+            <li>Busca la más fuerte. En el menú elige <span class="ui">Store</span>, gira a la posición <strong>64</strong> y haz clic para guardarla de forma permanente.</li>
+            <li>Repite para colocar otras emisoras fuertes en las posiciones 1–10.</li>
+          </ol>
+        </div>
+        <div class="howto__field">
+          <span class="howto__label">Notas</span>
+          <p>Se sugiere la posición 64 porque es rápida de alcanzar girando a la izquierda desde M01. La hora y la fecha llegan por RDS en el siguiente minuto en punto.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- ESCUCHAR FM ---------- -->
+    <section id="escuchar-fm">
+      <h2 class="section-title">Escuchar FM</h2>
+      <div class="howto">
+        <h3>Sesión cotidiana en FM</h3>
+        <div class="howto__field">
+          <span class="howto__label">Qué hace</span>
+          <p>Sintoniza tus emisoras locales y obtiene hora, fecha y RadioText por RDS.</p>
+        </div>
+        <div class="howto__field">
+          <span class="howto__label">Cuándo usarlo</span>
+          <p>Escucha diaria de radio local; también para detectar aperturas (<em>overreach</em>).</p>
+        </div>
+        <div class="howto__field">
+          <span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Enciende y haz clic para abrir el menú; otro clic pasa a modo Memory (aparece <span class="ui">TUNE M01</span>).</li>
+            <li>Gira a la izquierda hasta <span class="ui">TUNE M64</span>, tu emisora RDS fuerte.</li>
+            <li>Espera al siguiente minuto en punto para que lleguen hora y fecha. Si no salen, prueba otras FM guardadas.</li>
+            <li>¿Explorar condiciones? Menú <span class="ui">ETM</span>: si se guardan muchísimas emisoras, hay aperturas.</li>
+          </ol>
+        </div>
+        <div class="howto__field">
+          <span class="howto__label">Notas</span>
+          <p>El RadioText aparece bajo el nombre, en hasta tres líneas centradas (con diéresis correctas). Con la fecha mostrada e inactividad, la hora se muestra grande en el display de 7 segmentos. En domingo o festivo, la hora sale en rojo. Véase también <a href="#observar">trazador de señal, AFC y estéreo</a>.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- ESCUCHAR AM ---------- -->
+    <section id="escuchar-am">
+      <h2 class="section-title">Escuchar AM / onda corta</h2>
+      <div class="howto">
+        <h3>Sesión cotidiana en AM</h3>
+        <div class="howto__field">
+          <span class="howto__label">Qué hace</span>
+          <p>Barre las bandas de radiodifusión de onda corta y te deja recorrer las emisoras encontradas.</p>
+        </div>
+        <div class="howto__field">
+          <span class="howto__label">Cuándo usarlo</span>
+          <p>Escucha de onda corta, donde las condiciones cambian a lo largo del día.</p>
+        </div>
+        <div class="howto__field">
+          <span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Menú <span class="ui">Station</span> y clic en <span class="ui">swRadioGold</span> → 6160 kHz, banda de 49 m, SW ALL. El modo pasa a AM (línea verde abajo = banda de radiodifusión).</li>
+            <li>Menú <span class="ui">ETM</span> y clic: como la frecuencia de inicio está «en verde», barre solo las bandas de radiodifusión (de 2300 a 26100 kHz). Usa <span class="ui">Step</span> 5.</li>
+            <li>Gira el mando para recorrer las emisoras guardadas por el barrido.</li>
+            <li>¿Buscar a mano? Pulsa <span class="ui">TUNE</span> varias veces hasta <span class="ui">TUNE FREQ</span> y usa <a href="#sintonizar">Fast-Tune</a>.</li>
+            <li>Para onda media: Menú <span class="ui">BAND</span> → MW2 (paso de 9 kHz en Europa) y repite el <span class="ui">ETM</span>.</li>
+          </ol>
+        </div>
+        <div class="howto__field">
+          <span class="howto__label">Notas</span>
+          <p>Por la mañana hay emisoras por encima de 10 MHz; al atardecer, desde la banda de 49 m (~6000 kHz) hacia abajo. La memoria ETM es volátil: se pierde al apagar. Para ver el nombre y la ubicación de cada emisora automáticamente, activa <a href="#eibi">EiBi</a>. Las marcas amarillas en la escala indican estaciones de la tabla interna (<a href="#menu-station">menú Station</a>).</p>
+        </div>
+      </div>
+      <figure>
+        <img src="img/capture.png" alt="ETM con Exterior en AM en 15520 kHz">
+        <figcaption>Memoria ETM con señal fuerte en AM; los marcadores amarillos señalan otras estaciones oídas.</figcaption>
+      </figure>
+    </section>
+
+    <!-- ---------- ESCUCHAR SSB ---------- -->
+    <section id="escuchar-ssb">
+      <h2 class="section-title">Escuchar SSB</h2>
+      <div class="howto">
+        <h3>Sesión cotidiana en SSB</h3>
+        <div class="howto__field">
+          <span class="howto__label">Qué hace</span>
+          <p>Activa el modo banda lateral única y carga frecuencias SSB preconfiguradas (DWD, FT8, radioaficionados…).</p>
+        </div>
+        <div class="howto__field">
+          <span class="howto__label">Cuándo usarlo</span>
+          <p>Para escuchar voz de radioaficionados o preparar la decodificación de modos digitales.</p>
+        </div>
+        <div class="howto__field">
+          <span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Enciende y abre el menú (clic).</li>
+            <li>Elige <span class="ui">TUNE</span> (clic) y gira a la izquierda hasta <span class="ui">M64</span> (tu FM local, para fecha y hora).</li>
+            <li>Menú <span class="ui">Stations</span> y clic para pasar al rango ALL (swRadioGold).</li>
+            <li>Menú <span class="ui">Mode</span> y clic en <span class="ui">USB</span> (se carga SSB).</li>
+            <li>Menú <span class="ui">ETM</span> y clic para activar las frecuencias preconfiguradas.</li>
+          </ol>
+        </div>
+        <div class="howto__field">
+          <span class="howto__label">Notas</span>
+          <p>La primera frecuencia es Pinneberg en 146,220 kHz (USB). Girando a la derecha siguen frecuencias del DWD, otras estaciones SSB y, al final, frecuencias FT8 repartidas por la banda (recibibles 24/7). El ajuste SSB puede variar según el hardware; la V3 resultó la más constante. Para pasos finos por debajo de 1 kHz, ver <a href="#sintonizar">Sintonizar</a>.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- SINTONIZAR ---------- -->
+    <section id="sintonizar">
+      <h2 class="section-title">Sintonizar: Fast Tune, NumPad, TUNE, SEEK</h2>
+      <p class="section-sub">Distintas formas de moverte por la banda según lo que necesites.</p>
+
+      <div class="howto">
+        <h4>Fast Tune — recorrer la banda a mano</h4>
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>Desacopla el mando de la lenta escala: con giros rápidos, los saltos de frecuencia se multiplican y la respuesta es inmediata.</p></div>
+        <div class="howto__field"><span class="howto__label">Cuándo usarlo</span><p>Búsqueda manual rápida por la banda. Está activo por defecto.</p></div>
+        <div class="howto__field"><span class="howto__label">Pasos</span><p>Simplemente gira deprisa: aparece la frecuencia directa en amarillo. Gira despacio para el ajuste fino normal. Para volver a la sintonía antigua, usa el <a href="#longpress">menú de pulsación larga</a> (TuneFast).</p></div>
+      </div>
+
+      <div class="howto">
+        <h4>NUMPAD — introducir una frecuencia exacta</h4>
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>Entrada numérica clásica de frecuencia (o de fecha/hora).</p></div>
+        <div class="howto__field"><span class="howto__label">Cuándo usarlo</span><p>Para saltar lejos rápido (p. ej. de 198 kHz a 28500 kHz) sin pelear con el mando.</p></div>
+        <div class="howto__field"><span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Selecciona el menú <span class="ui">TUNE</span> y haz una pulsación larga (&gt;350 ms).</li>
+            <li>Gira el mando para mover el foco entre las 12 teclas; haz clic para escribir cada cifra.</li>
+            <li>Una pulsación larga borra el último carácter.</li>
+            <li>Pulsa la tecla Intro (abajo a la derecha) para aplicar la frecuencia.</li>
+          </ol>
+        </div>
+        <div class="howto__field" id="numpad-hora"><span class="howto__label">Fecha y hora manual <span class="exp">feb 2026</span></span><p>El punto decimal solo actúa en FM. En SSB puede hacer falta ajustar el BFO. El NumPad también fija la <strong>hora/fecha manual</strong> cuando no hay RDS: introduce p. ej. <code>11.55</code> (las doce menos cinco) o <code>21.02.1989</code>. No distingue hora mundial de local. Útil para que <a href="#eibi">EiBi</a> y el <a href="#ibp">IBP</a> funcionen sin sincronización RDS.</p></div>
+      </div>
+
+      <div class="howto">
+        <h4>Modos TUNE — qué hace el mando</h4>
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>Cambia la función del mando entre frecuencia, memorias y bloqueo.</p></div>
+        <div class="howto__field"><span class="howto__label">Opciones (menú <span class="ui">TUNE</span>)</span>
+          <ul>
+            <li><strong>TUNE FREQ</strong> — un giro ajusta la frecuencia (clásico).</li>
+            <li><strong>TUNE MEM</strong> — conmuta entre emisoras guardadas (aparece p. ej. <em>M05</em>).</li>
+            <li><strong>TUNE ETM</strong> — conmuta entre las memorias del último barrido ETM (<em>E05</em>).</li>
+            <li><strong>TUNE SEEK</strong> — el sentido de giro decide la dirección de la búsqueda (si está <a href="#seek">activado</a>).</li>
+            <li><strong>TUNE LOCK</strong> — bloquea el mando: mantenlo pulsado &gt;1 s. El menú sigue accesible para desbloquear.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="howto" id="seek">
+        <h4>SEEK Up/Down — búsqueda automática <span class="exp">experimental</span></h4>
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>Busca automáticamente la siguiente señal útil con un algoritmo propio, sin limitarse al rango de escala.</p></div>
+        <div class="howto__field"><span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Vía menú <span class="ui">SeekUp</span> / <span class="ui">SeekDn</span>.</li>
+            <li>O con <span class="ui">TUNE SEEK</span>, si lo activas: brillo 63 + <a href="#longpress">Freeze</a> (o <code>seek 1</code> en <a href="#settings">setting.txt</a>).</li>
+          </ol>
+        </div>
+        <div class="howto__field"><span class="howto__label">Notas</span><p>Girar el mando o un clic detienen la búsqueda. En modo Classic, SEEK se comporta como en el firmware original.</p></div>
+      </div>
+
+      <div class="howto" id="longpress">
+        <h4>Menú de pulsación larga — ajustes rápidos</h4>
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>Mantén pulsado el mando para acceder a ajustes sin entrar al menú. El tiempo elige la función:</p></div>
+        <div class="howto__field"><span class="howto__label">Tiempos</span>
+          <ol>
+            <li><em>Volume</em> (~0,5 s) — ajuste de volumen.</li>
+            <li><em>TuneLock</em> (~1,5 s) — bloqueo del mando.</li>
+            <li><em>TuneFast</em> (~2,5 s) — conmuta Fast-Tune / sintonía antigua.</li>
+            <li><em>Freeze</em> (~3,5 s) — congela la pantalla para guardar/exportar (bitmap, archivos USB, Slow/Fast, PlayList, tinte…).</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- RTTY / CW ---------- -->
+    <section id="rtty">
+      <h2 class="section-title">Decodificar RTTY y CW (Morse)</h2>
+      <div class="req">Requiere el <a href="#hardware-io11">puente de cable a IO11</a>. Funciona desde <span class="ui">Volume</span> 30+.</div>
+
+      <div class="howto">
+        <h3>Decodificar una señal RTTY</h3>
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>Convierte una emisión de teletipo (p. ej. los partes del DWD) en texto en pantalla.</p></div>
+        <div class="howto__field"><span class="howto__label">Cuándo usarlo</span><p>Para leer radiofax meteorológico RTTY y señales de radioaficionados.</p></div>
+        <div class="howto__field"><span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Partiendo de FM: Menú <span class="ui">Station</span> → cualquier emisora.</li>
+            <li>Menú <span class="ui">Mode</span> → <span class="ui">USB</span> o <span class="ui">LSB</span>.</li>
+            <li>Menú <span class="ui">ETM</span> → llama las estaciones SSB preconfiguradas.</li>
+            <li>Menú <span class="ui">Decoder</span> → <span class="ui">Tone/BL</span>: afina hasta que la retroiluminación parpadee al compás de la señal.</li>
+            <li>Menú <span class="ui">Decoder</span> → <span class="ui">RTTY</span>: el texto empieza a formarse.</li>
+            <li>Pulsa de nuevo: aparece <strong>LOCKED</strong> y los errores disminuyen.</li>
+          </ol>
+        </div>
+        <div class="howto__field"><span class="howto__label">Notas</span><p>En modo <strong>LOCKED</strong> la pantalla se congela salvo el texto (no se actualizan batería, hora ni señal); un clic libera. Con <span class="ui">Store</span> guardas la frecuencia (con decimales) y el modo USB. Cambiar a FM apaga el decodificador. Opciones del decodificador: RTTY (50 baudios), RTTY45, RTTY75 y Morse.</p></div>
+      </div>
+
+      <div class="howto">
+        <h3>Decodificar Morse (CW)</h3>
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>Decodifica código Morse con detección automática de velocidad (WPM).</p></div>
+        <div class="howto__field"><span class="howto__label">Cuándo usarlo</span><p>Balizas NDB (280–420 kHz AM), estaciones de tiempo y radioaficionados en CW.</p></div>
+        <div class="howto__field"><span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Sitúate en la señal (USB/LSB) con suficiente volumen (<span class="ui">Volume</span> desde 37).</li>
+            <li>Ajusta el <a href="#backlight">brillo a 68</a> para ver el texto a tamaño medio en el <a href="#terminal">terminal</a>.</li>
+            <li>Menú <span class="ui">Decoder</span> → <span class="ui">Morse</span>; otro clic activa el modo Locked/terminal.</li>
+            <li><strong>Instant Tuning:</strong> gira el mando (pasos de 10 Hz) hasta que arranque el decodificador y se mueva el texto amarillo. Compara arriba a la derecha los puntos/rayas reconocidos con lo que oyes.</li>
+            <li><strong>Instant Level:</strong> ajusta el volumen con pulsación larga (barra de color arriba). Un clic vuelve a Instant Tuning.</li>
+            <li><strong>Noise Level:</strong> si no basta, con <a href="#backlight">brillo 68</a> + Freeze activa el umbral de ruido (on) y vuelve a subir el volumen (~47 en V3).</li>
+          </ol>
+        </div>
+        <div class="howto__field"><span class="howto__label">Notas</span><p>Espera a que la automática de WPM se estabilice (17–32; para NDB, ~7). El parpadeo cesa al dejar quieto el mando 5 s. Para el oído musical, el detector puede usar 880 Hz (La') en vez de 1000 Hz (<a href="#backlight">brillo 64</a>).</p></div>
+      </div>
+
+      <div class="howto">
+        <h3>Afinar el tono a 1000 Hz (sin analizador)</h3>
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>Calibra el radio para que el tono que evalúa el detector sea de 1000 Hz, usando una AM fuerte como referencia.</p></div>
+        <div class="howto__field"><span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Con <span class="ui">Stations</span> sintoniza una AM fuerte (p. ej. 6160 kHz); usa <span class="ui">ETM</span> para hallar una potente.</li>
+            <li>Sintoniza centrado (ninguna flecha AFC verde), p. ej. 17490 kHz.</li>
+            <li>Menú <span class="ui">Mode</span> → <span class="ui">USB</span>; ajusta el BFO si hace falta y sal de BFO.</li>
+            <li>Con <span class="ui">TUNE FREQ</span>, baja un paso (−1 kHz) → 17489.000 kHz: se oye un tono de 1000 Hz.</li>
+            <li>Comprueba con <span class="ui">Decoder Tone/BL</span> que la retroiluminación queda mayormente encendida.</li>
+          </ol>
+        </div>
+        <div class="howto__field"><span class="howto__label">Notas</span><p>Alternativa: analiza el sonido del altavoz con la app <a href="https://play.google.com/store/apps/details?id=org.intoorbit.spectrum">Spectroid</a> y deja el pico en 1000 Hz (en LSB, el pico derecho). Algunos ejemplares quedan ~180 Hz desviados.</p></div>
+      </div>
+      <figure>
+        <img src="img/miniV3spec.png" alt="Espectro del tono RTTY ajustado a 1000 Hz">
+        <figcaption>Espectro del tono RTTY afinado a 1000 Hz en USB.</figcaption>
+      </figure>
+
+      <h3 id="terminal">Vista de terminal y Replay</h3>
+      <div class="howto">
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>Muestra el texto decodificado en varias líneas con scroll, y permite reproducir mensajes guardados.</p></div>
+        <div class="howto__field"><span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Activa el terminal eligiendo <a href="#backlight">brillo 66, 68 o 70</a> (fuente pequeña monoespaciada / media / grande).</li>
+            <li>Durante la decodificación se registran en RAM los mensajes del DWD que empiezan por «ZCZC».</li>
+            <li>Menú <span class="ui">Decoder</span> → <span class="ui">Replay</span> para revisar el búfer circular.</li>
+            <li>Para guardarlo en archivo: <a href="#backlight">brillo 66</a> + Freeze crea <a href="#archivos"><code>logfile.txt</code></a>; o exporta por serie con <code>log</code>.</li>
+          </ol>
+        </div>
+        <div class="howto__field"><span class="howto__label">Notas</span><p>El búfer recoge mensajes RTTY (entre ZCZC y NNNN), Morse, resultados <a href="#eibi">EiBi</a> en AM y texto RDS en FM. Indicadores arriba a la derecha: bucles de prueba RYRY y grabación de mensaje.</p></div>
+      </div>
+      <figure>
+        <img src="img/miniV3term1.png" alt="Terminal con scroll y fuente monoespaciada">
+        <figcaption>Terminal con scroll en el Mini-Radio.</figcaption>
+      </figure>
+
+      <!-- Montaje hardware IO11 -->
+      <h3 id="hardware-io11">Montaje del puente IO11</h3>
+      <div class="howto">
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>Lleva el audio del amplificador a una entrada analógica del ESP32, para que el segundo núcleo pueda detectar el tono.</p></div>
+        <div class="howto__field"><span class="howto__label">Pasos</span><p>Tiende un puente de cable del <strong>pin 8</strong> del CI amplificador a <strong>IO11</strong> del ESP32-S3. A partir de <span class="ui">Volume</span> 30+ se detectan tonos en torno a 1 kHz. La decodificación corre en el segundo núcleo (detector Goertzel), sin afectar al control del radio.</p></div>
+      </div>
+      <figure>
+        <a href="img/ESP32IO11.png"><img src="img/ESP32IO11.png" alt="Modificación con un puente de cable a IO11"></a>
+        <figcaption>El puente de cable hacia IO11.</figcaption>
+      </figure>
+    </section>
+
+    <!-- ---------- SSTV ---------- -->
+    <section id="sstv">
+      <h2 class="section-title">Recibir imágenes SSTV</h2>
+      <div class="req req--mic">Requiere el <a href="#hardware-i2s">micrófono I2S INMP441</a>.</div>
+      <div class="howto">
+        <h3>Decodificar una imagen SSTV (Martin 1/2)</h3>
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>Convierte el sonido SSTV de los radioaficionados en una imagen en color a pantalla completa (320×256).</p></div>
+        <div class="howto__field"><span class="howto__label">Cuándo usarlo</span><p>Sobre todo los fines de semana, en 14230 kHz USB.</p></div>
+        <div class="howto__field"><span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Menú <span class="ui">Stations</span> → <span class="ui">swRadioGold</span> (banda ALL en AM).</li>
+            <li>Menú <span class="ui">Mode</span> → <span class="ui">USB</span>.</li>
+            <li>Menú <span class="ui">ETM</span> y clic (estaciones SSB preconfiguradas).</li>
+            <li>Gira el mando 11 veces a la izquierda → 14230 kHz (vale también YouTube o Web-SDR).</li>
+            <li>Menú <span class="ui">Volume</span> → señal claramente audible.</li>
+            <li>Menú <span class="ui">Decoder</span> → <span class="ui">Martin 1</span> y clic: pantalla completa al haber señal.</li>
+          </ol>
+        </div>
+        <div class="howto__field"><span class="howto__label">Notas</span><p>Solo modos Martin 1 y 2; otros modos se ven con colores desplazados pero a veces reconocibles. Tras la línea 256 el decodificador espera; girar a la derecha lo mantiene en pausa, a la izquierda continúa. Una pulsación larga «más larga» sale. Si te resulta demasiado colorido, conmuta a <a href="#pantalla">escala de grises</a>.</p></div>
+      </div>
+      <figure>
+        <img src="img/miniv3_sstvr.jpg" alt="Imagen SSTV en color recibida en pantalla">
+        <figcaption>Imagen SSTV decodificada en la pantalla del radio.</figcaption>
+      </figure>
+    </section>
+
+    <!-- ---------- WEFAX ---------- -->
+    <section id="wefax">
+      <h2 class="section-title">Recibir mapas meteorológicos WeFax</h2>
+      <div class="req req--mic">Requiere el <a href="#hardware-i2s">micrófono I2S INMP441</a>.</div>
+      <div class="howto">
+        <h3>Decodificar un mapa WeFax (DWD / Pinneberg)</h3>
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>Recibe mapas del tiempo en escala de grises a pantalla completa, sin PC.</p></div>
+        <div class="howto__field"><span class="howto__label">Cuándo usarlo</span><p>De día en Europa Central; emisiones a 120 LPM (Pinneberg/DWD, también Northwood).</p></div>
+        <div class="howto__field"><span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Menú <span class="ui">Stations</span> → <span class="ui">swRadioGold</span> (banda ALL en AM).</li>
+            <li>Menú <span class="ui">Mode</span> → <span class="ui">USB</span>.</li>
+            <li>Menú <span class="ui">ETM</span> y clic (estaciones SSB preconfiguradas).</li>
+            <li>Gira el mando 6 veces a la derecha → Pinneberg WeFax en 3853,200 kHz.</li>
+            <li>Menú <span class="ui">Volume</span> → señal claramente audible.</li>
+            <li>Menú <span class="ui">Decoder</span> → <span class="ui">WeFAX</span> y clic (pantalla completa).</li>
+            <li>Acciona el mando dos veces seguidas: el sonido se decodifica en imagen.</li>
+          </ol>
+        </div>
+        <div class="howto__field"><span class="howto__label">Notas</span><p>El decodificador pasa por búsqueda → fase (<em>phasing</em>) → imagen. Girando el mando durante la recepción desplazas el inicio del mapa. Pulsación larga para salir. Un tono de 2250 Hz = blanco (lo que el DWD envía en reposo). WeFax por Web-SDR no da imágenes estables.</p></div>
+      </div>
+      <figure>
+        <img src="img/miniv3faxdwd.jpg" alt="Mapa meteorológico del DWD decodificado">
+        <figcaption>Mapa del tiempo del DWD en la pantalla del radio.</figcaption>
+      </figure>
+
+      <!-- Montaje hardware I2S -->
+      <h3 id="hardware-i2s">Montaje del micrófono I2S</h3>
+      <div class="howto">
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>Añade un micrófono digital INMP441 que entrega audio I2S de alta resolución para los decodificadores de imagen.</p></div>
+        <div class="howto__field"><span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Coloca el módulo INMP441 (14 mm) detrás del altavoz, en la carcasa V1.</li>
+            <li>Conecta <strong>GPIO12/13/14</strong> a los hilos de datos del micrófono.</li>
+            <li>Alimenta con <strong>3,3 V</strong> y <strong>GND</strong>. (GPIO11 ya va al altavoz para RTTY/CW.)</li>
+          </ol>
+        </div>
+        <div class="howto__field"><span class="howto__label">Notas</span>
+          <div class="warn">Las líneas digitales 12/13/14 sin apantallar provocan <strong>interferencias</strong> en el radio cuando se usa un decodificador I2S. El I2S queda activo hasta apagar; si no se invoca, no molesta. Un truco usado en desarrollo: dejar el equipo modificado en modo <em>mute</em> como decodificador, recibiendo por micrófono la señal limpia de un segundo radio.</div>
+        </div>
+      </div>
+      <div class="figrow">
+        <figure><a href="img/miniv3I2Smike.jpg"><img src="img/miniv3I2Smike.jpg" alt="Módulo INMP441 montado tras el altavoz"></a></figure>
+        <figure><a href="img/miniv3I2S.jpg"><img src="img/miniv3I2S.jpg" alt="Esquema de conexión del micrófono I2S"></a></figure>
+        <figure><a href="img/miniv3_i2s_esptab.jpg"><img src="img/miniv3_i2s_esptab.jpg" alt="Tabla de conexiones de la ampliación"></a><figcaption>Resumen de conexiones.</figcaption></figure>
+      </div>
+    </section>
+
+    <!-- ---------- IBP ---------- -->
+    <section id="ibp">
+      <h2 class="section-title">Identificar balizas IBP <span class="exp">experimental</span></h2>
+      <div class="howto">
+        <h3>Ver qué baliza NCDXF/IARU está activa</h3>
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>Calcula, según la hora UTC y la banda, qué baliza del proyecto internacional (18 balizas, ciclo de 3 min) emite en la frecuencia elegida, y lo muestra sobre la frecuencia.</p></div>
+        <div class="howto__field"><span class="howto__label">Cuándo usarlo</span><p>Para evaluar la propagación en HF con las balizas de 14100, 18110, 21150, 24930 y 28200 kHz.</p></div>
+        <div class="howto__field"><span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Asegúrate de tener la hora sincronizada (RDS o <a href="#numpad-hora">NumPad</a>).</li>
+            <li>Carga estas memorias (por <a href="#archivos">serie o <code>mem.txt</code></a>) y sintoniza una de ellas:</li>
+          </ol>
+          <pre><code>9999
+51,14100,19,2,-920
+52,18110,19,2,80
+53,21150,19,2,-920
+54,24930,19,2,-920
+55,28200,19,2,-920</code></pre>
+        </div>
+        <div class="howto__field"><span class="howto__label">Notas</span><p>Cada baliza emite su indicativo y cuatro portadoras (100/10/1/0,1 W), 10 s por frecuencia. El decodificador Morse integrado no es ideal con estas señales esporádicas. Horario y detalles: <a href="https://iaruhfbeacons.wordpress.com/schedule-of-ibp-ncdxf-beacon-transmissions/">schedule</a> · <a href="https://www.ncdxf.org/beacon/">NCDXF</a>.</p></div>
+      </div>
+      <div class="figrow">
+        <figure><a href="https://www.ncdxf.org/beacon/"><img src="img/IBP.jpg" alt="Mapa del proyecto internacional de balizas"></a></figure>
+        <figure><img src="img/IBPme.jpg" alt="Memorias configuradas para las balizas IBP"></figure>
+      </div>
+    </section>
+
+    <!-- ---------- OBSERVAR ---------- -->
+    <section id="observar">
+      <h2 class="section-title">Observar la banda</h2>
+      <p class="section-sub">Herramientas para ver, no solo oír, lo que ocurre en una banda.</p>
+
+      <div class="howto">
+        <h3>Cascada (waterfall) FM / AM / SSB <span class="exp">experimental</span></h3>
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>Representa la intensidad de señal del rango de escala actual (400 kHz en AM/SSB, 4 MHz en FM), barriéndolo continuamente.</p></div>
+        <div class="howto__field"><span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Ajusta el <a href="#backlight">brillo a 32 o 33</a>.</li>
+            <li>Llama <span class="ui">ETM</span>: aparece la cascada. En SSB el BFO se pone en 0 Hz automáticamente.</li>
+            <li>Gira para ajustar la frecuencia; un clic pasa a modo escucha (el barrido se detiene) y vuelve.</li>
+            <li>Sal con «pulsación larga y soltar».</li>
+          </ol>
+        </div>
+        <div class="howto__field"><span class="howto__label">Notas</span><p>Usa el paso (Step) de AM, idealmente 5 kHz. En FM, útil en Sporadic-E para ver señales por debajo de 87 MHz; la recepción apta para RDS se marca con un trazo vertical.</p></div>
+      </div>
+
+      <div class="howto">
+        <h3>Band Monitor — ocupación a lo largo de 5 horas <span class="exp">experimental</span></h3>
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>Construye lentamente una gráfica de ocupación de 400 kHz: eje X = tiempo (5 h en tramos de 15 min), eje Y = frecuencia.</p></div>
+        <div class="howto__field"><span class="howto__label">Pasos</span><p>En AM o SSB, con <a href="#backlight">brillo 38 o 39</a>, llama <span class="ui">ETM</span>. Avanza un paso a la derecha por minuto (300 px = 300 min).</p></div>
+        <div class="howto__field"><span class="howto__label">Notas</span><p>Marcas amarillas = buena calidad; azul = solo cierta intensidad. Abajo: frecuencia de barrido, tensión de batería y minuto actual. Con la hora por RDS, las marcas son en hora local.</p></div>
+      </div>
+      <figure>
+        <a href="img/miniv3Monitor.jpg"><img src="img/miniv3Monitor.jpg" alt="Gráfica del Band Monitor a lo largo de cinco horas"></a>
+        <figcaption>Band Monitor: ocupación de la banda durante cinco horas.</figcaption>
+      </figure>
+
+      <div class="howto">
+        <h3>Trazador de señal, AFC, estéreo y mono</h3>
+        <div class="howto__field"><span class="howto__label">Trazador de señal</span><p>Con <a href="#backlight">brillo 20, 50 o 90</a> (y sin decodificador), registra la intensidad y calidad durante un minuto. Con hora RDS, la línea vertical es un segundero.</p></div>
+        <div class="howto__field"><span class="howto__label">AFC (afinado fino)</span><p>Unas flechas indican la desviación de frecuencia; el punto central se enciende cuando la emisora está bien sintonizada y fuerte. Útil tras un ETM en AM.</p></div>
+        <div class="howto__field"><span class="howto__label">Estéreo / mono</span><p>El rótulo STEREO aparece a partir del 95 % de separación (antes, con el porcentaje de blend). Con <a href="#backlight">brillo 47/46</a> fuerzas mono temporal (quita el siseo); con 48/49 silencias un canal estéreo (efecto estéreo con dos equipos).</p></div>
+      </div>
+
+      <div class="howto" id="eibi">
+        <h3>EiBi — nombre, ubicación y distancia del transmisor</h3>
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>Busca la frecuencia actual en la lista EiBi (~10 000 entradas) y muestra la emisora, la ubicación del transmisor en texto claro y la distancia en km.</p></div>
+        <div class="howto__field"><span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Con el radio en <a href="#archivos">modo USB Flash</a>, guarda en él <a href="http://www.eibispace.de/dx/eibi.txt">eibi.txt</a> y <a href="http://www.eibispace.de/dx/README.TXT">README.txt</a> (con esa grafía exacta).</li>
+            <li>Para la distancia, añade tu posición en <a href="#settings">setting.txt</a>: <code>home 51.198455, 6.879572</code>.</li>
+            <li>Reinicia el radio con los archivos presentes. Al fijar una frecuencia, tras un rato comienza la búsqueda (SEARCH) y se muestran los datos.</li>
+          </ol>
+        </div>
+        <div class="howto__field"><span class="howto__label">Notas</span><p>La búsqueda corre en el núcleo 2, sin frenar la recepción (<strong>EiBi-Fast</strong> cachea los últimos resultados para mostrarlos sin demora). Sin hora RDS se muestra la primera entrada; con hora se respetan las indicaciones UTC. No considera región de destino: corrige editando el texto si hace falta.</p></div>
+      </div>
+      <figure>
+        <a href="img/miniv3TX.jpg"><img src="img/miniv3TX.jpg" alt="Ubicación del transmisor y distancia calculada"></a>
+        <figcaption>Ubicación del transmisor en texto claro y distancia en km.</figcaption>
+      </figure>
+    </section>
+
+    <!-- ---------- ARCHIVOS ---------- -->
+    <section id="archivos">
+      <h2 class="section-title">Gestionar archivos y datos</h2>
+      <p class="section-sub">Listas de emisoras, ajustes, capturas y registros: por unidad USB o por puerto serie.</p>
+
+      <div class="howto">
+        <h3>Usar el radio como unidad USB Flash</h3>
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>El radio se monta como una memoria USB para copiar archivos desde un PC o teléfono.</p></div>
+        <div class="howto__field"><span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li><strong>Mantén pulsado el codificador mientras enciendes.</strong> Aparece el símbolo de unidad.</li>
+            <li>En el PC se monta una unidad (si no, desconecta y reconecta el equipo encendido).</li>
+            <li>Copia o edita los archivos; <strong>expulsa el medio tras escribir</strong>.</li>
+          </ol>
+        </div>
+        <div class="howto__field"><span class="howto__label">Notas</span>
+          <div class="warn">No es una memoria USB real: el flash del ESP32-S3 admite del orden de &gt;100 000 escrituras. Si se comporta raro, formatéalo desde el PC (borra los archivos, no el firmware). Detalles de recuperación con el <a href="https://adafruit.github.io/Adafruit_WebSerial_ESPTool/">WebSerial ESPTool</a>.</div>
+        </div>
+      </div>
+
+      <div class="howto">
+        <h3>Archivos que entiende el firmware (al arrancar)</h3>
+        <div class="howto__field"><span class="howto__label">Listas (se importan al encender)</span>
+          <ul>
+            <li><code>mem.txt</code> — memorias. Primera línea <code>9999</code>; formato <em>memoria,frecuencia,banda,mode,BFO</em>.</li>
+            <li><code>user.txt</code> — lista de estaciones AM. Primera línea <code>9998</code>; formato <em>frecuencia,nombre</em>.</li>
+            <li id="settings"><code>setting.txt</code> — ajustes. Primera línea <code>9997</code> (p. ej. <code>battery 1</code>, <code>home …</code>, <code>tint 55000</code>, <code>slow 1</code>, <code>seek 0</code>). Exporta <code>settings.txt</code> (con <em>s</em>) con brillo 54 + Freeze; renómbralo a <code>setting.txt</code> para importarlo.</li>
+            <li><code>playlist.txt</code> — <a href="#playlist">programación horaria</a>.</li>
+            <li><code>greyscale</code> / <code>inverse</code> / <code>rotate</code> — archivos vacíos que activan modos de <a href="#pantalla">pantalla</a>.</li>
+          </ul>
+        </div>
+        <div class="howto__field"><span class="howto__label">Exportar (Freeze)</span><p>Con <a href="#longpress">Freeze</a> y el <a href="#backlight">brillo</a> correspondiente se crean: 51 <code>memo.txt</code> · 52 <code>stations.txt</code> · 53 <code>etm.txt</code> · 54 <code>settings.txt</code> · 55 <code>playlist.txt</code> · 50 captura BMP · 66 <code>logfile.txt</code>.</p></div>
+        <div class="howto__field"><span class="howto__label">Ver en terminal vs. guardar</span><p>Con <em>SoftMute = 0</em>, ese mismo gesto <strong>muestra</strong> el archivo en el terminal en lugar de guardarlo (útil para revisarlo). Con cualquier otro valor, lo guarda/sobrescribe.</p></div>
+        <div class="howto__field"><span class="howto__label">Aviso</span><p>Para una fecha de creación correcta, sincroniza la hora (RDS/NumPad). Un <code>mem.txt</code> presente al arrancar sobrescribe las memorias guardadas.</p></div>
+      </div>
+      <figure class="figure-float-right">
+        <a href="img/miniv3eibi.png"><img src="img/miniv3eibi.png" alt="Información adicional bajo el nombre de la estación"></a>
+        <figcaption>Datos adicionales mostrados bajo el nombre de la emisora.</figcaption>
+      </figure>
+
+      <div class="howto">
+        <h3>Intercambiar datos por puerto serie</h3>
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>A 9600 baudios, con un terminal (CoolTerm en escritorio o <a href="https://play.google.com/store/apps/details?id=de.kai_morich.serial_usb_terminal">Serial USB Terminal</a> en Android), exporta/importa listas y capturas.</p></div>
+        <div class="howto__field"><span class="howto__label">Comandos (un carácter, sin Intro)</span>
+          <ul>
+            <li><code>1</code> — exporta una captura BMP (≈160k binarios).</li>
+            <li><code>3</code> — activa/desactiva la salida serie no solicitada.</li>
+            <li><code>4</code> / <code>5</code> — exportan las memorias / la lista de estaciones AM como texto.</li>
+            <li>cualquier carácter — exporta la memoria ETM actual.</li>
+            <li><code>9999</code> / <code>9998</code> — importan memorias / estaciones desde un archivo de texto.</li>
+            <li><code>erase</code> o <code>del</code> — borran las listas de usuario; <code>user</code> cuenta entradas; <code>log</code> vuelca el búfer RTTY.</li>
+          </ul>
+        </div>
+        <div class="howto__field"><span class="howto__label">Gestión de archivos (Copy/Type/Remove/Rename)</span>
+          <p>Para operar sobre el USB Flash por serie, la primera línea manda. Ejemplos:</p>
+          <pre><code>copy setting.txt        ← copia lo que sigue como setting.txt
+9997
+battery 2
+
+type setting.txt        ← muestra el archivo en el terminal
+remove setting.txt      ← borra el archivo (sin vuelta atrás)
+rename eibi.txt eibi.tmp ← renombra (p. ej. para desactivar EiBi)</code></pre>
+        </div>
+        <div class="howto__field"><span class="howto__label">Aviso</span>
+          <div class="warn">Desactiva el control de flujo por hardware (RTS/DTR) en el terminal, o al abrir el puerto se resetea el ESP32-S3. Un <strong>cable de datos USB-C</strong> (p. ej. de una batería externa) puede enviar datos y frenar mucho el firmware: usa un <strong>cable de carga sencillo</strong>.</div>
+        </div>
+      </div>
+
+      <div class="howto" id="playlist">
+        <h3>PlayList — reproducir emisoras por horario</h3>
+        <div class="howto__field"><span class="howto__label">Qué hace</span><p>Reproduce automáticamente una memoria a una hora dada, durante una duración, y luego silencia.</p></div>
+        <div class="howto__field"><span class="howto__label">Pasos</span>
+          <ol class="steps">
+            <li>Crea <code>playlist.txt</code> en el USB con líneas <em>hora memoria duración</em>:</li>
+          </ol>
+          <pre><code>...
+09:00 21 60      ← a las 09:00 reproduce Mem21 durante 60 min
+...</code></pre>
+          <p>Presente al encender, se activa y se comprueba una vez por minuto. Con <a href="#backlight">brillo 55</a> + Freeze (SoftMute=0) la ves en el terminal; con SoftMute≠0 conmuta activo/inactivo.</p>
+        </div>
+        <div class="howto__field"><span class="howto__label">Notas</span><p>La PlayList vive solo en el USB Drive, no en RAM. También puede crearse por serie con <em>Copy</em>.</p></div>
+      </div>
+    </section>
+
+    <!-- ---------- PANTALLA ---------- -->
+    <section id="pantalla">
+      <h2 class="section-title">Personalizar la pantalla</h2>
+      <div class="howto">
+        <h4>Brillo (Backlight)</h4>
+        <div class="howto__field"><span class="howto__label">Cómo</span><p>Menú <span class="ui">Backlight</span>, rango 0–99. Con valores impares, el brillo baja tras un minuto de inactividad para ahorrar energía. <strong>Ojo:</strong> muchos valores activan funciones ocultas — ver la <a href="#backlight">tabla de códigos</a>.</p></div>
+      </div>
+      <div class="howto">
+        <h4>Escala de grises, inversa y rotación</h4>
+        <div class="howto__field"><span class="howto__label">Cómo</span>
+          <p>En el <a href="#archivos">USB Flash</a>, crea un archivo vacío con el nombre exacto:</p>
+          <ul>
+            <li><code>greyscale</code> — arranca en grises/blanco y negro.</li>
+            <li><code>inverse</code> — invierte la representación.</li>
+            <li><code>rotate</code> — gira el display 180° (codificador a la izquierda; para zurdos).</li>
+          </ul>
+          <p>Para desactivar, borra el archivo. El nombre debe ser exacto.</p>
+        </div>
+      </div>
+      <div class="howto">
+        <h4>Tint (tinte de color) <span class="exp">experimental</span></h4>
+        <div class="howto__field"><span class="howto__label">Cómo</span><p>Solo con la escala de grises activa. Con <a href="#backlight">brillo 60</a> + Freeze, la frecuencia de AM (150–30000) elige el tono (~60 000 colores con la inversa). Se guarda en <a href="#settings">setting.txt</a> (<code>tint 55000</code>). Es una «virguería»: las condiciones de recepción no cambian.</p></div>
+      </div>
+      <div class="figrow">
+        <figure><a href="img/miniv3hardcopy2bw.png"><img src="img/miniv3hardcopy2bw.png" alt="Pantalla en escala de grises"></a></figure>
+        <figure><a href="img/miniv3hardcopy2bwi.png"><img src="img/miniv3hardcopy2bwi.png" alt="Pantalla en grises e inversa"></a></figure>
+      </div>
+    </section>
+
+    <!-- ---------- MENU REF ---------- -->
+    <section id="menu">
+      <h2 class="section-title">Referencia: el menú (11 + 11)</h2>
+      <p class="section-sub">Un clic abre el menú. Las 11 primeras entradas son del firmware original; las demás se añadieron con las ampliaciones.</p>
+      <table class="data-table">
+        <tr><td>01</td><td>VOLUME</td><td>Volumen</td></tr>
+        <tr><td>02</td><td>Step</td><td>Paso de sintonía</td></tr>
+        <tr><td>03</td><td>Mode</td><td>FM / AM / USB / LSB</td></tr>
+        <tr><td>04</td><td>Bfo</td><td>Ajuste fino SSB</td></tr>
+        <tr><td>05</td><td>Bandwidth</td><td>Ancho de banda</td></tr>
+        <tr><td>06</td><td>AGC/Att</td><td>Control de ganancia</td></tr>
+        <tr><td>07</td><td>SoftMute</td><td>Umbral (usado por AutoMute y vista de archivos)</td></tr>
+        <tr><td>08/09</td><td>SeekUp/Dn</td><td><a href="#seek">Búsqueda automática</a></td></tr>
+        <tr><td>10</td><td>BAND</td><td>Cambio de banda</td></tr>
+        <tr><td>11</td><td>Mute</td><td>Silencio</td></tr>
+        <tr><td>12</td><td>Backlight</td><td><a href="#backlight">Brillo y funciones ocultas</a></td></tr>
+        <tr><td>13</td><td>Timer</td><td>Apagado por temporizador</td></tr>
+        <tr><td>14</td><td>Battery</td><td>Tensión / % / temperatura del ESP</td></tr>
+        <tr><td>15</td><td>AutoMute</td><td>Silencio por RDS/hora/SNR/RSSI</td></tr>
+        <tr><td>16</td><td>Classic/Info</td><td>Interfaz original vs. ampliada</td></tr>
+        <tr><td>17</td><td>Store</td><td>Guardar frecuencia en memoria</td></tr>
+        <tr><td>18</td><td>Recall</td><td>Recuperar memorias (salir con clic)</td></tr>
+        <tr><td>19</td><td>TUNE</td><td><a href="#sintonizar">Función del mando</a></td></tr>
+        <tr><td>20</td><td>Decoder</td><td><a href="#rtty">RTTY/CW</a>, <a href="#sstv">SSTV</a>, <a href="#wefax">WeFax</a>, Replay</td></tr>
+        <tr><td>21</td><td id="menu-station">Station</td><td>Tabla interna de emisoras AM</td></tr>
+        <tr><td>22</td><td>ETM</td><td>Barrido rápido (Easy Tuning Mode)</td></tr>
+      </table>
+      <p class="small"><strong>AutoMute</strong> ofrece POP/TP, POP, NEWS, TIME, SNR, RSSI, OFF, ON — útil como «bloqueador de música de relleno» o como squelch por umbral. <strong>ETM</strong> tiene variantes FM, AM, SSB, Scanner, Memory-Scan y Monitor según el modo y el <a href="#backlight">brillo</a>.</p>
+    </section>
+
+    <!-- ---------- BACKLIGHT REF ---------- -->
+    <section id="backlight">
+      <h2 class="section-title">Referencia: códigos de Backlight</h2>
+      <p class="section-sub">Durante el desarrollo, el valor de brillo (menú <span class="ui">Backlight</span>) también activa funciones. Muchas requieren además <a href="#longpress">Freeze</a> (pulsación larga ~3,5 s).</p>
+      <table class="data-table">
+        <tr><td>20·50·90</td><td>Trazador de señal</td></tr>
+        <tr><td>30</td><td>ETM-AM continuo (hasta hallar estación)</td></tr>
+        <tr><td>32·33</td><td>Cascada AM/SSB y FM</td></tr>
+        <tr><td>34·35</td><td>Escáner ETM con preescucha (FM/AM/USB/LSB)</td></tr>
+        <tr><td>36·37</td><td>Escaneo ETM de memorias con preescucha</td></tr>
+        <tr><td>38·39</td><td>Band Monitor (5 h)</td></tr>
+        <tr><td>44 +Freeze</td><td>Conmuta Slow/Fast</td></tr>
+        <tr><td>46·47</td><td>Fuerza mono en FM</td></tr>
+        <tr><td>48·49</td><td>Silencia un canal estéreo</td></tr>
+        <tr><td>50 +Freeze</td><td>Captura BMP a USB Flash</td></tr>
+        <tr><td>51·52·53·54</td><td>Exporta memorias / estaciones / ETM / ajustes</td></tr>
+        <tr><td>55 +Freeze</td><td>Activa/muestra la PlayList</td></tr>
+        <tr><td>60 +Freeze</td><td>Tinte (por frecuencia de AM)</td></tr>
+        <tr><td>61 +Freeze</td><td>Conmuta inversa</td></tr>
+        <tr><td>62 +Freeze</td><td>Conmuta grises / color</td></tr>
+        <tr><td>63 +Freeze</td><td>Conmuta TUNE SEEK</td></tr>
+        <tr><td>64 +Freeze</td><td>Frecuencia del detector (1000 / 880 Hz)</td></tr>
+        <tr><td>66 +Freeze</td><td>Guarda mensajes RTTY (logfile.txt)</td></tr>
+        <tr><td>66·68·70</td><td>Terminal: fuente pequeña mono / media / grande</td></tr>
+        <tr><td>68 +Freeze</td><td>Conmuta el umbral de ruido del detector</td></tr>
+      </table>
+      <p class="small">Un brillo con valor 0 no se guarda. Los valores 69, 82, 83 y 99 quedan reservados a otras pruebas. Recuerda: con <em>SoftMute = 0</em>, los códigos de exportación <strong>muestran</strong> el archivo en el terminal en vez de guardarlo.</p>
+    </section>
+
+    <!-- ---------- PROBLEMAS ---------- -->
+    <section id="problemas">
+      <h2 class="section-title">Solución de problemas</h2>
+      <div class="note">
+        <span class="label">Los decodificadores no detectan nada</span>
+        Comprueba el <a href="#hardware-io11">puente IO11</a> (RTTY/CW) o el <a href="#hardware-i2s">micrófono I2S</a> (SSTV/WeFax). Sube el volumen (RTTY/CW desde 30; CW desde 37–47) y afina el tono a <a href="#rtty">1000 Hz</a>.
+      </div>
+      <div class="warn">
+        <span class="label">El firmware va muy lento / el decodificador falla</span>
+        Un <strong>cable de datos USB-C</strong> conectado envía datos y frena el firmware. Usa un <strong>cable de carga sencillo</strong>. Desactiva el control de flujo por hardware (RTS/DTR) en el terminal.
+      </div>
+      <div class="warn">
+        <span class="label">Interferencias al usar SSTV/WeFax</span>
+        Las líneas I2S (GPIO12/13/14) sin apantallar generan ruido en el propio radio una vez activado un decodificador I2S. Permanece activo hasta apagar. Considera apantallar o usar un segundo radio como fuente de audio.
+      </div>
+      <div class="note">
+        <span class="label">La unidad USB se comporta de forma extraña / capturas con líneas desplazadas</span>
+        Formatéala desde el PC (borra archivos, no el firmware). Recuerda <strong>expulsar tras escribir</strong> y vigilar los ciclos de escritura del flash.
+      </div>
+      <div class="note">
+        <span class="label">SSB suena desplazado o el tono no cae en 1000 Hz</span>
+        El ajuste SSB varía según el hardware; la V3 es la más constante. Algún ejemplar queda ~180 Hz desviado: corrige con el BFO o mide tu desviación con el método de la <a href="#rtty">AM de referencia</a>.
+      </div>
+      <div class="note">
+        <span class="label">Datos EiBi o de transmisor incorrectos</span>
+        Sincroniza la hora (RDS o <a href="#numpad-hora">NumPad</a>) y verifica que <code>eibi.txt</code> y <code>README.txt</code> están en el USB con esa grafía. No se considera la región: edita el texto si hace falta.
+      </div>
+      <p class="small">La búsqueda de errores es ardua: hasta que se corrigen, «todo bug cuenta como feature». El uso es bajo tu propio riesgo.</p>
+    </section>
+
+    <!-- ---------- HISTORIAL ---------- -->
+    <section id="historial">
+      <h2 class="section-title">Historial de cambios</h2>
+      <p class="section-sub">Esta firmware es un proyecto en evolución continua. Resumen cronológico de las funciones añadidas.</p>
+      <div class="changelog">
+        <div class="entry"><span class="date">Junio 2026</span><p>Nuevo soporte de hardware y nuevo número de versión (V4). Pruebas sobre ATS-Mini V1/V3.</p></div>
+        <div class="entry"><span class="date">Mayo 2026</span><p>Decodificadores de imagen <a href="#sstv">SSTV</a> y <a href="#wefax">WeFax</a> mediante el micrófono <a href="#hardware-i2s">I2S INMP441</a>.</p></div>
+        <div class="entry"><span class="date">Abril 2026</span><p>Actualización del decodificador RTTY/CW: Instant Tuning, Instant Level y Advanced Noise Level; afinado en pasos de 10 Hz; segundo tono de detector (880 Hz).</p></div>
+        <div class="entry"><span class="date">Marzo 2026</span><p>Ampliación serie (Copy/Type/Remove/Rename), <a href="#ibp">soporte IBP</a>, Logger EiBi/RDS, vista de archivos en terminal, <a href="#playlist">PlayList</a>, indicador de estado de guardado.</p></div>
+        <div class="entry"><span class="date">Febrero 2026</span><p>Hora/fecha manual por <a href="#numpad-hora">NumPad</a>, ubicación y distancia del transmisor (<a href="#eibi">EiBi</a>), EiBi-Fast, <a href="#backlight">SLOW/FAST</a> (≈62 % más de autonomía: 13:10 → 21:25 min en una prueba) y <a href="#seek">SEEK</a> con algoritmo propio.</p></div>
+        <div class="entry"><span class="date">Enero 2026</span><p>Entrada numérica <a href="#sintonizar">NumPad</a> y <a href="#observar">Band Monitor</a> de cinco horas.</p></div>
+        <div class="entry"><span class="date">Diciembre 2025</span><p>Unidad <a href="#archivos">USB Flash</a>, soporte <a href="#eibi">EiBi</a>, escala de grises / inversa / rotación / tinte, escaneo de memorias.</p></div>
+        <div class="entry"><span class="date">Octubre 2025</span><p>Representaciones en <a href="#observar">cascada</a> (waterfall) en FM, AM y SSB. Inicio del <em>Mini-Radio-Script</em> para programar el firmware uno mismo.</p></div>
+        <div class="entry"><span class="date">Septiembre 2025</span><p>Datos por <a href="#archivos">puerto serie</a> (export/import de memorias y estaciones, captura BMP); vista de Terminal.</p></div>
+        <div class="entry"><span class="date">Agosto 2025</span><p>Canales estéreo separados, indicación de blend, centro AFC y mono forzado.</p></div>
+        <div class="entry"><span class="date">Versión 3</span><p><a href="#escuchar-ssb">Sintonía SSB</a> con pasos &lt;1 kHz y <a href="#sintonizar">Fast Tune</a>.</p></div>
+        <div class="entry"><span class="date">Versión 2</span><p>Decodificador de <a href="#rtty">RTTY y CW</a> sobre la antena, con el puente IO11.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ================= PIE ================= -->
+<footer class="site-footer">
+  <div class="site-footer__inner">
+    <nav>
+      <a href="http://www.hjberndt.de/index-2.html">Inicio</a>
+      <a href="http://www.hjberndt.de/book/index.html">Libros</a>
+      <a href="http://www.hjberndt.de/soft/index.html">Software</a>
+      <a href="http://www.hjberndt.de/dvd.html">RTV digital</a>
+      <a href="http://www.hjberndt.de/tonband.html">Música</a>
+      <a href="http://www.hjberndt.de/kontakt.html">Contacto</a>
+    </nav>
+    <p class="disclaimer">Del contenido y los enlaces externos son responsables los operadores de esos sitios — H.-J. Berndt. · Guía de usuario en español, reorganizada y rediseñada a partir de la página original <em>pocketSI4735DualCoreDecoder</em>.</p>
+  </div>
+</footer>
+
+<script>
+  // Menú de contenidos plegable en móvil
+  (function () {
+    var toc = document.getElementById('toc');
+    var btn = toc.querySelector('.toc-toggle');
+    function isMobile() { return window.matchMedia('(max-width: 900px)').matches; }
+    if (isMobile()) toc.setAttribute('data-open', 'false');
+    btn.addEventListener('click', function () {
+      var open = toc.getAttribute('data-open') === 'true';
+      toc.setAttribute('data-open', String(!open));
+      btn.setAttribute('aria-expanded', String(!open));
+    });
+    toc.querySelectorAll('a').forEach(function (a) {
+      a.addEventListener('click', function () {
+        if (isMobile()) { toc.setAttribute('data-open', 'false'); btn.setAttribute('aria-expanded', 'false'); }
+      });
+    });
+    // Resaltado de la sección activa
+    var links = Array.prototype.slice.call(toc.querySelectorAll('a'));
+    var map = {};
+    links.forEach(function (a) {
+      var id = a.getAttribute('href').slice(1);
+      var el = document.getElementById(id);
+      if (el) map[id] = a;
+    });
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          links.forEach(function (l) { l.classList.remove('is-active'); });
+          var a = map[e.target.id];
+          if (a) a.classList.add('is-active');
+        }
+      });
+    }, { rootMargin: '-10% 0px -80% 0px', threshold: 0 });
+    Object.keys(map).forEach(function (id) { observer.observe(document.getElementById(id)); });
+  })();
+</script>
+
+</body>
+</html>
